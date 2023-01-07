@@ -41,6 +41,9 @@ function verifyJWT(req, res, next) {
 async function run(){
     const appointmentOptionCollection = client.db('doctorsPortal').collection('appointmentOptions');
     const bookingsCollection = client.db('doctorsPortal').collection('bookings');
+    const usersCollection = client.db('doctorsPortal').collection('users');
+        const doctorsCollection = client.db('doctorsPortal').collection('doctors');
+        const paymentsCollection = client.db('doctorsPortal').collection('payments');
 
 
 
@@ -200,6 +203,44 @@ async function run(){
         const result = await usersCollection.updateOne(filter, updatedDoc, options);
         res.send(result);
     });
+
+    //
+    app.get('/doctors', verifyJWT, verifyAdmin, async (req, res) => {
+        const query = {};
+        const doctors = await doctorsCollection.find(query).toArray();
+        res.send(doctors);
+    })
+
+    app.post('/doctors', verifyJWT, verifyAdmin, async (req, res) => {
+        const doctor = req.body;
+        const result = await doctorsCollection.insertOne(doctor);
+        res.send(result);
+    });
+
+    app.delete('/doctors/:id', verifyJWT, verifyAdmin, async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: ObjectId(id) };
+        const result = await doctorsCollection.deleteOne(filter);
+        res.send(result);
+    });
+
+    app.delete('/admin/user/delete',verifyJWT,verifyAdmin,async(req,res)=>{
+        const uid=req.body.uid;
+        const filter = { uid:uid };
+        admin.auth().deleteUser(uid)
+        .then(async()=>{
+            res.send({success:true});
+            const result=await usersCollection.deleteOne(filter);
+            if(result.acknowledged){
+                return res.send({success:true});
+            }
+            return res.send({success:false});
+        })
+        .catch(err=>{
+            console.log(err);
+            return res.send({success:false});
+        })
+    })
 }
 
 run().catch(console.log);
