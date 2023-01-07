@@ -16,6 +16,13 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.twtll.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+var admin = require("firebase-admin");
+
+var serviceAccount = require("./doctors-portal-ada67-firebase-adminsdk-wdtqe-61b5bcb27d.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
 //verify JWT
 function verifyJWT(req, res, next) {
@@ -45,7 +52,18 @@ async function run(){
         const doctorsCollection = client.db('doctorsPortal').collection('doctors');
         const paymentsCollection = client.db('doctorsPortal').collection('payments');
 
+        //admin verification
+        const verifyAdmin = async (req, res, next) => {
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail };
+            const user = await usersCollection.findOne(query);
 
+            if (user?.role !== 'admin') {
+                console.log("bruh")
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+            next();
+        }
 
 
     //getting appointment dates
