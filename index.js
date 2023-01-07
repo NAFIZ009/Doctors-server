@@ -127,6 +127,79 @@ async function run(){
         }
         res.status(403).send({ accessToken: '' })
     });
+
+    //payments
+    app.post('/create-payment-intent', async (req, res) => {
+        const booking = req.body;
+        const price = booking.price;
+        const amount = price * 100;
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            currency: 'usd',
+            amount: amount,
+            "payment_method_types": [
+                "card"
+            ]
+        });
+        res.send({
+            clientSecret: paymentIntent.client_secret,
+        });
+    });
+
+    //payments
+    app.post('/payments', async (req, res) => {
+        const payment = req.body;
+        const result = await paymentsCollection.insertOne(payment);
+        const id = payment.bookingId
+        const filter = { _id: ObjectId(id) }
+        const updatedDoc = {
+            $set: {
+                paid: true,
+                transactionId: payment.transactionId
+            }
+        }
+    const updatedResult = await bookingsCollection.updateOne(filter,            updatedDoc)
+        res.send(result);
+    })
+
+    //getting all the users
+    app.get('/users', async (req, res) => {
+        const query = {};
+        const users = await usersCollection.find(query).toArray();
+        res.send(users);
+    });
+
+    //getting if the user is admin
+    app.get('/users/admin/:email', async (req, res) => {
+        const email = req.params.email;
+        const query = { email }
+        const user = await usersCollection.findOne(query);
+        res.send({ isAdmin: user?.role === 'admin' });
+    })
+
+    //posting users
+    app.post('/users', async (req, res) => {
+        const user = req.body;
+        console.log(user);
+        // TODO: make sure you do not enter duplicate user email
+        // only insert users if the user doesn't exist in the database
+        const result = await usersCollection.insertOne(user);
+        res.send(result);
+    });
+
+    
+    app.put('/users/admin/:id', verifyJWT, verifyAdmin, async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: ObjectId(id) }
+        const options = { upsert: true };
+        const updatedDoc = {
+            $set: {
+                role: 'admin'
+            }
+        }
+        const result = await usersCollection.updateOne(filter, updatedDoc, options);
+        res.send(result);
+    });
 }
 
 run().catch(console.log);
